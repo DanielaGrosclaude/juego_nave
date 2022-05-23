@@ -2,6 +2,8 @@
 #include <windows.h>
 #include <conio.h>
 #include <stdlib.h>
+#include <list>
+using namespace std;
 
 
 #define ARRIBA  72
@@ -27,7 +29,7 @@ void OcultarCursor (){
     hCon = GetStdHandle(STD_OUTPUT_HANDLE);
     CONSOLE_CURSOR_INFO cci;
     cci.dwSize = 1;
-    cci.bVisible = TRUE;
+    cci.bVisible = FALSE;
 
 
 
@@ -66,7 +68,11 @@ class NAVE{
 
 public:
     NAVE (int _x, int _y, int _corazones, int _vidas): x(_x), y(_y), corazones (_corazones), vidas (_vidas){}
-
+    int X(){
+    return x;}
+    int Y(){
+    return y;}
+    void COR(){corazones--;}
     void pintar();
     void borrar();
     void mover();
@@ -74,19 +80,20 @@ public:
     void morir();
 
 
+
 };
 
 void NAVE::pintar(){
     gotoxy(x,y); printf("  %c", 30);
-    gotoxy(x,y+1);  printf(" %c%C%C ", 40, 12, 41);
-    gotoxy(x,y+2); printf("%c%c%c%c%c", 30, 158, 238, 158, 30);
+    gotoxy(x,y+1);  printf(" %c%C%C ", 40, 207, 41);
+    gotoxy(x,y+2); printf("%c%c %c%c", 30, 190, 190, 30);
 
 }
 
 void NAVE::borrar(){
-    gotoxy(x,y); printf("     ");
-    gotoxy(x,y+1); printf("    ");
-    gotoxy(x,y+2); printf("     ");
+    gotoxy(x,y); printf("       ");
+    gotoxy(x,y+1); printf("      ");
+    gotoxy(x,y+2); printf("      ");
 
 }
 
@@ -100,6 +107,7 @@ void NAVE::mover(){
              if (tecla == DERECHA && x+6<77) x++;
              if (tecla == ARRIBA && y > 4) y--;
              if (tecla == ABAJO && y+3<33) y++;
+             if (tecla == 'e')corazones--;
              pintar();
 
 
@@ -107,20 +115,20 @@ void NAVE::mover(){
 
 }
 void NAVE::pintar_corazones(){
+
+    gotoxy(50, 2); printf("VIDAS %d", vidas);
     gotoxy(64,2);printf("VIDA");
-    gotoxy(70,2);printf("   ");
+    gotoxy(70,2);printf("    ");
     for (int i=0; i<corazones; i++){
 
         gotoxy(70+i,2);printf("%c",3);
     }
 }
 
-//Creo  NAVE 
-
 void NAVE::morir(){
-    if (corazones == 0) {
+    if (corazones == 0){
         borrar();
-        gotoxy (x,y); printf("   **   ");
+        gotoxy(x,y); printf("   **   ");
         gotoxy(x,y+1); printf("  ****  ");
         gotoxy(x,y+2); printf("   **   ");
         Sleep(200);
@@ -143,7 +151,6 @@ void NAVE::morir(){
     }
 
 }
-//creo la clase asteroide (enemigo)
 class AST {
     int x,y;
 public:
@@ -151,6 +158,9 @@ public:
 
     void pintar();
     void mover();
+    void choque(class NAVE &N);
+    int X(){return x;}
+    int Y(){return y;}
 
 };
 
@@ -171,26 +181,121 @@ void AST::mover(){
 
 
 }
+
+void AST::choque(class NAVE &N){
+    if( x >= N.X() && x < N.X()+6 && y >= N.Y() && y <= N.Y()+2 ){
+
+        N.COR();
+        N.borrar();
+        N.pintar();
+        N.pintar_corazones();
+        x = rand ()%71 + 4;
+        y = 4;
+
+    }
+
+}
+
+class BALA{
+    int x,y;
+
+public:
+    BALA( int _x, int _y): x(_x), y(_y){
+    }
+    int X() {
+    return x;}
+    int Y() {
+    return y;}
+    void mover();
+    bool fuera();
+
+};
+
+
+void BALA::mover(){
+    gotoxy(x,y); printf(" ");
+    if(y > 4)y--;
+    gotoxy(x,y); printf("*");
+
+}
+
+bool BALA::fuera(){
+    if(y==4)return true;
+    return false;
+
+}
+
 int main() {
 
 
     OcultarCursor();
     pintar_limites();
-    
-    NAVE N(7,7,3,3);
+
+    NAVE N(37,30,3,3);
     N.pintar();
     N.pintar_corazones();
 
-    AST ast(10,4);
+    list<AST*> A;
+    list<AST*>::iterator itA;
+
+    for(int i=0; i<5; i++){
+            A.push_back(new AST(rand()%75+3, rand()%5+4));
+
+    }
+
+    list<BALA*> B;
+    list<BALA*>::iterator it;
+
 
 
     bool game_over = false;
     while (!game_over){
-        
-        ast.mover();
-        N.morir();
-        N.mover();
-        Sleep(30);
+            if (kbhit()){
+
+                char tecla=getch();
+                if (tecla == 'a')
+                    B.push_back(new BALA(N.X() +2, N.Y() -1 ));
+            }
+
+            for (it = B.begin(); it != B.end()  ; it++){
+
+                (*it)->mover();
+                if ((*it)->fuera()){
+                    gotoxy((*it)->X(), (*it)->Y());printf(" ");
+                    delete(*it);
+                    it = B.erase(it);
+                }
+
+            }
+            for(itA = A.begin(); itA != A.end(); itA++ ){
+                    (*itA)->mover();
+                    (*itA)->choque(N);
+
+
+            }
+
+            for(itA = A.begin(); itA!= A.end(); itA++){
+                for(it = B.begin(); it != B.end(); it++){
+                if((*itA)->X() ==(*it)->X() && ( (*itA)->Y()+1 == (*it)->Y()|| (*itA)->Y() ==(*it)->Y() ))
+                {
+                    gotoxy((*it)->X(),(*it)->Y()); printf(" ");
+                    delete(*it);
+                    it = B.erase(it);
+
+                    A.push_back(new AST(rand()%74+3, 4));
+                    gotoxy((*itA)->X(),(*itA)->Y()); printf(" ");
+                    delete(*itA);
+                    itA = A.erase(itA);
+
+                }
+
+                }
+
+            }
+
+            N.morir();
+            N.mover();
+            Sleep(30);
 
     }
     return 0;
